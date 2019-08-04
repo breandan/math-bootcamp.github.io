@@ -82,6 +82,8 @@ Numerical differentiation (known as _differential quadrature_) are still the lea
 
 ![](https://upload.wikimedia.org/wikipedia/commons/4/41/AbsoluteErrorNumericalDifferentiationExample.png)
 
+As seen in the figure above, selecting an appropriate $$h$$ for finite-precision numerical differentiation is not a straightforward task, due to the challenges of fixed-point arithmetic. If $$h$$ is too small, the result will be dominated by finite-precision error. If $$h$$ is not small enough, the result will be inaccurate due to formula error. For this reason, many finite difference methods incur some computational penalty due to calibration. While various libraries such as [mpmath](http://www.mpmath.org/) are able to perform arbitrary-precision arithmetic, this also incurs a non-negligible overhead.
+
 ## Calculating Gradients, Analytically
 
 > ``In a [recent article](https://dl.acm.org/citation.cfm?id=364791) R. Wengert suggested a technique for machine evaluation of the partial derivatives of a function given in analytical form [that] appears very attractive from the programming viewpoint and permits the treatment of large systems of differential equations which might not otherwise be undertaken.''
@@ -100,14 +102,14 @@ $$
 \end{align}
 $$
 
-The same notion which appears in the differential calculi can be applied in many different contexts from [regular expressions](http://maveric.uwaterloo.ca/reports/1964_JACM_Brzozowski.pdf) to [λ-calculus](https://www.sciencedirect.com/science/article/pii/S030439750300392X) to [linear logic](https://arxiv.org/abs/1805.11813). In machine learning, we are chiefly interested in calculating derivatives for vector fields or some mechanical representation thereof. As long as a number system admits the standard arithmetic notation (addition, multiplication and their inverses), it is possible to symbolically derive an expression which, when evaluated at a point, will equate to the finite difference approximation.
+The same notion which appears in the differential calculi can be applied in many different contexts from [regular expressions](http://maveric.uwaterloo.ca/reports/1964_JACM_Brzozowski.pdf) to [λ-calculus](https://www.sciencedirect.com/science/article/pii/S030439750300392X) to [boolean algebra](https://en.wikipedia.org/wiki/Boolean_differential_calculus). In machine learning, we are chiefly interested in calculating derivatives for vector fields or some mechanical representation thereof. As long as a number system admits the standard arithmetic notation (addition, multiplication and their inverses), it is possible to symbolically derive an expression which, when evaluated at a point, will equate to the finite difference approximation.
 
 We make the following two claims:
 
 1. Symbolic differentiation can be performed mechanically by replacing the expressions on the left hand side with their right hand side equivalents. This process often requires less computation than the numerical method [described above](#calculating-gradients-numerically).
-2. The same rules can be applied to functions whose inputs and outputs are vectors, with exactly the same algebraic semantics. Using matrix notation requires far less computation than elementwise scalar differentiation.
+2. The same rules can be applied to functions whose inputs and outputs are vectors, with exactly the same algebraic semantics (shown below). Using matrix notation requires far less computation than elementwise scalar differentiation.
 
-Firstly, let us examine the first claim. A naïve implementation of the finite difference method requires at least two evaluations each time we wish to compute the derivative at a certain input. While algebraic rewriting can help to reduce the computation, but we are still left with the $$\lim_{h\rightarrow 0}$$. It is often more efficient to derive a closed form analytical solution for the derivative at every input.
+Firstly, let us examine the first claim. A naïve implementation of the finite difference method requires at least two evaluations each time we wish to compute the derivative at a certain input. While algebraic rewriting can help to reduce the computation, we are still left with the question of how to choose an appropriate $$h$$ for $$\lim_{h\rightarrow 0}$$. It is often more efficient to derive a closed form analytical solution for the derivative at every input, then select an appropriate precision for numerical evaluation at a later point.
 
 Secondly, partial differentiation of vector functions is a specific case of higher dimensional derivatives that are often more convenient to represent as a matrix, or _Jacobian_, which is defined as follows: 
 
@@ -128,13 +130,17 @@ $$
 \end{bmatrix}
 $$
 
-The matrix representation often requires far less memory and computation than a naïve implementation which iteratively computes derivatives for each element of a vector function.
-
-TODO: give an example
+This representation often requires far less memory and computation than a naïve implementation which iteratively computes derivatives for each element of a vector function.
 
 ### The Chain Rule, Reexamined
 
-TODO: Leibniz notation shows us something very interesting. What happens if we take the derivative with respect to a function?
+The chain rule shown above is exactly the same for vector functions. Suppose we have two functions $$\mathbf{f}: \mathbb{R}^m \rightarrow \mathbb{R}^n$$ and $$\mathbf{g}: \mathbb{R}^n \rightarrow \mathbb{R}^n$$. The Jacobian of $$\mathbf{f}\circ\mathbf{g}(\mathbf{x})$$ is just as in the scalar case:
+
+$$
+\mathcal{J}_{\mathbf{x}}(\mathbf{f}\circ\mathbf{g}) = \mathcal{J}_{\mathbf{f}}\mathcal{J}_{\mathbf{g}}
+$$
+
+TODO: (Total derivative) Leibniz notation shows us something very interesting. What happens if we take the derivative with respect to a function?
 
 ### Sum of the Parts are Greater than the Whole
 
@@ -148,13 +154,17 @@ TODO: Examine how to implement these rules using operator overloading, computati
  
 TODO: Introduce linear function chains, optimal Jacobian accumulation problem and some heuristic solutions. Demonstrate algorithmic complexity of forward and reverse accumulation where $$m >> n$$ and vis versa.
 
-Suppose we have a function $$\mathbf{F}(\mathbf{x}) = \mathbf{f}_k\circ\ldots\circ\mathbf{f}_0\circ\mathbf{x}$$, where $$\mathbf{f}_k: \mathbb{R}^m$$ and $$\mathbf{f}_0: \mathbb{R}^n$$. Using the chain rule for vector functions, the Jacobian can be defined as:
+Suppose we have a function $$\mathbf{\mathbf{\hat P}}(\mathbf{x}) = \mathbf{p}_k\circ\ldots\circ\mathbf{p}_1\circ\mathbf{x}$$, where $$\mathbf{\mathbf{\hat P}}: \mathbb{R}^m \rightarrow \mathbb{R}^n$$. Using the chain rule for vector functions, the Jacobian with respect to $$\mathbf x$$ can be written as:
 
 $$
-\mathcal{J}_{\mathbf{F}} = \prod_{i=0}^k \mathcal{J}_{\mathbf{f}_i}
+\mathcal{J}_{\mathbf{x}}(\mathbf{\hat P}) = \prod_{i=0}^k \mathcal{J}_{\mathbf{p}_i}
 $$
 
-Recall that matrix multiplication is associative $$\left(\mathcal{J}_{\mathbf{f}_0}\left(\mathcal{J}_{\mathbf{f}_1}\mathcal{J}_{\mathbf{f}_2}\right)\right) = \left(\left(\mathcal{J}_{\mathbf{f}_0}\mathcal{J}_{\mathbf{f}_1}\right)\mathcal{J}_{\mathbf{f}_2}\right)$$. In which order should we evaluate this product in order to minimize the computational complexity? We consider two cases, where $$m << n$$, and $$n << m$$.
+Recall that matrix multiplication is associative, i.e. $$\left(\mathcal{J}_{\mathbf{p}_0}\left(\mathcal{J}_{\mathbf{p}_1}\mathcal{J}_{\mathbf{p}_2}\right)\right) = \left(\left(\mathcal{J}_{\mathbf{p}_0}\mathcal{J}_{\mathbf{p}_1}\right)\mathcal{J}_{\mathbf{p}_2}\right)$$. In which order should we evaluate this product in order to minimize the computational complexity? We consider two cases, where $$m << n$$, and $$n << m$$.
+
+$$
+\mathcal{J}_{\mathbf x}(\mathbf{\hat P}) = \displaystyle \prod_{i=1}^{k} \mathcal{J}_{\mathbf{p}_i} = \underbrace{\bigg(\Big((\mathcal{J}_{\mathbf{p}_k} \mathcal{J}_{\mathbf{p}_{k-1}}) \dots \mathcal{J}_{\mathbf{p}_2}\Big) \mathcal{J}_{\mathbf{p}_1}\bigg)}_{\textit{Reverse accumulation}} = \underbrace{\bigg(\mathcal{J}_{\mathbf{p}_k} \Big(\mathcal{J}_{\mathbf{p}_{k-1}} \dots (\mathcal{J}_{\mathbf{p}_2} \mathcal{J}_{\mathbf{p}_1})\Big)\bigg)}_{\textit{Forward accumulation}}
+$$
 
 ### Linear Regression from an AD Perspective
  
